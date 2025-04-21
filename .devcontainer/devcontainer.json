@@ -1,0 +1,30 @@
+{
+    "name": "SplaTAM Dev Container",
+    "build": {
+      "dockerfile": "Dockerfile"
+    },
+  
+    "runArgs": [
+        "--volume=/tmp/.X11-unix:/tmp/.X11-unix",
+        "--env=DISPLAY=192.168.50.217:0.0", // May have to change this IP address
+    ],
+    
+    "workspaceFolder": "/SplaTAM",
+  
+    "customizations": {
+      "vscode": {
+        "extensions": [
+          "ms-python.python",
+          "ms-python.vscode-pylance"
+        ]
+      }
+    },
+  
+    "postCreateCommand": "bash /SplaTAM/setup_env.sh",
+  
+    "mounts": [
+      "source=${localWorkspaceFolder},target=/SplaTAM,type=bind"
+    ],
+  
+    "remoteUser": "root"
+  }

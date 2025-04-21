@@ -5,6 +5,9 @@ experiments/
 results/
 wandb/
 
+# Python Venv
+splatam-venv/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
