@@ -4,6 +4,9 @@ import shutil
 import sys
 import time
 from importlib.machinery import SourceFileLoader
+import pprint 
+
+_PRINT_DEBUG = False
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -23,7 +26,7 @@ import wandb
 
 from datasets.gradslam_datasets import (load_dataset_config, ICLDataset, ReplicaDataset, ReplicaV2Dataset, AzureKinectDataset,
                                         ScannetDataset, Ai2thorDataset, Record3DDataset, RealsenseDataset, TUMDataset,
-                                        ScannetPPDataset, NeRFCaptureDataset)
+                                        ScannetPPDataset, NeRFCaptureDataset, FromUnityDataset)
 from utils.common_utils import seed_everything, save_params_ckpt, save_params
 from utils.eval_helpers import report_loss, report_progress, eval
 from utils.keyframe_selection import keyframe_selection_overlap
@@ -60,6 +63,8 @@ def get_dataset(config_dict, basedir, sequence, **kwargs):
         return ScannetPPDataset(basedir, sequence, **kwargs)
     elif config_dict["dataset_name"].lower() in ["nerfcapture"]:
         return NeRFCaptureDataset(basedir, sequence, **kwargs)
+    elif config_dict["dataset_name"].lower() in ["fromunity"]:
+        return FromUnityDataset(config_dict, basedir, sequence, **kwargs)
     else:
         raise ValueError(f"Unknown dataset name {config_dict['dataset_name']}")
 
@@ -285,13 +290,15 @@ def get_loss(params, curr_data, variables, iter_time_idx, loss_weights, use_sil_
         color_mask = color_mask.detach()
         losses['im'] = torch.abs(curr_data['im'] - im)[color_mask].sum()
     elif tracking:
+        color_mask = torch.ones_like(curr_data['im'])  # for visualization
         losses['im'] = torch.abs(curr_data['im'] - im).sum()
     else:
+        color_mask = torch.ones_like(curr_data['im'])  # for visualization
         losses['im'] = 0.8 * l1_loss_v1(im, curr_data['im']) + 0.2 * (1.0 - calc_ssim(im, curr_data['im']))
 
     # Visualize the Diff Images
     if tracking and visualize_tracking_loss:
-        fig, ax = plt.subplots(2, 4, figsize=(12, 6))
+        fig, ax = plt.subplots(2, 5, figsize=(14, 6))
         weighted_render_im = im * color_mask
         weighted_im = curr_data['im'] * color_mask
         weighted_render_depth = depth * mask
@@ -299,9 +306,11 @@ def get_loss(params, curr_data, variables, iter_time_idx, loss_weights, use_sil_
         diff_rgb = torch.abs(weighted_render_im - weighted_im).mean(dim=0).detach().cpu()
         diff_depth = torch.abs(weighted_render_depth - weighted_depth).mean(dim=0).detach().cpu()
         viz_img = torch.clip(weighted_im.permute(1, 2, 0).detach().cpu(), 0, 1)
+        viz_render_img = torch.clip(weighted_render_im.permute(1, 2, 0).detach().cpu(), 0, 1)
+
+        # Plot all images
         ax[0, 0].imshow(viz_img)
         ax[0, 0].set_title("Weighted GT RGB")
-        viz_render_img = torch.clip(weighted_render_im.permute(1, 2, 0).detach().cpu(), 0, 1)
         ax[1, 0].imshow(viz_render_img)
         ax[1, 0].set_title("Weighted Rendered RGB")
         ax[0, 1].imshow(weighted_depth[0].detach().cpu(), cmap="jet", vmin=0, vmax=6)
@@ -316,6 +325,11 @@ def get_loss(params, curr_data, variables, iter_time_idx, loss_weights, use_sil_
         ax[0, 3].set_title("Silhouette Mask")
         ax[1, 3].imshow(mask[0].detach().cpu(), cmap="gray")
         ax[1, 3].set_title("Loss Mask")
+        ax[0, 4].imshow(curr_data['im'].permute(1, 2, 0).detach().cpu())
+        ax[0, 4].set_title("GT RGB")
+        ax[1, 4].imshow(curr_data['depth'][0].detach().cpu(), cmap="gray")
+        ax[1, 4].set_title("GT Depth")
+
         # Turn off axis
         for i in range(2):
             for j in range(4):
@@ -462,7 +476,7 @@ def rgbd_slam(config: dict):
         config['tracking']['visualize_tracking_loss'] = False
     if "gaussian_distribution" not in config:
         config['gaussian_distribution'] = "isotropic"
-    print(f"{config}")
+    pprint.pprint(config)
 
     # Create Output Directories
     output_dir = os.path.join(config["workdir"], config["run_name"])

@@ -4,4 +4,5 @@ RUN apt-get update && \
     apt-get install -y \
         x11-apps \
         python3-pip \
-        python3-venv
+        python3-venv \
+        python3-tk

@@ -1,21 +1,17 @@
 import os
 from os.path import join as p_join
 
-scenes = ["room0", "room1", "room2",
-          "office0", "office1", "office2",
-          "office_", "office4"]
-
 primary_device="cuda:0"
-seed = 3
-scene_name = scenes[0] # change this to the scene you want to run
+seed = 22
+scene_name = "horse-statue"
 
-map_every = 20
-keyframe_every = 60
+map_every = 1
+keyframe_every = 1
 mapping_window_size = 24
-tracking_iters = 40
-mapping_iters = 60
+tracking_iters = 100
+mapping_iters = 150
 
-group_name = "Replica"
+group_name = "FromUnity"
 run_name = f"{scene_name}_{seed}"
 
 config = dict(
@@ -27,14 +23,14 @@ config = dict(
     keyframe_every=keyframe_every, # Keyframe every nth frame
     mapping_window_size=mapping_window_size, # Mapping window size
     report_global_progress_every=500, # Report Global Progress every nth frame
-    eval_every=5, # Evaluate every nth frame (at end of SLAM)
+    eval_every=3, # Evaluate every nth frame (at end of SLAM)
     scene_radius_depth_ratio=3, # Max First Frame Depth to Scene Radius Ratio (For Pruning/Densification)
     mean_sq_dist_method="projective", # ["projective", "knn"] (Type of Mean Squared Distance Calculation for Scale of Gaussians)
-    gaussian_distribution="isotropic", # ["isotropic", "anisotropic"] (Isotropic -> Spherical Covariance, Anisotropic -> Ellipsoidal Covariance)
+    gaussian_distribution="anisotropic", # ["isotropic", "anisotropic"] (Isotropic -> Spherical Covariance, Anisotropic -> Ellipsoidal Covariance)
     report_iter_progress=False,
     load_checkpoint=False,
     checkpoint_time_idx=0,
-    save_checkpoints=False, # Save Checkpoints
+    save_checkpoints=True, # Save Checkpoints
     checkpoint_interval=100, # Checkpoint Interval
     use_wandb=True,
     wandb=dict(
@@ -46,11 +42,11 @@ config = dict(
         eval_save_qual=True,
     ),
     data=dict(
-        basedir="./data/Replica",
-        gradslam_data_cfg="./configs/data/replica.yaml",
+        basedir="./data/FromUnity",
+        gradslam_data_cfg="./configs/data/fromUnity.yaml",
         sequence=scene_name,
-        desired_image_height=680,
-        desired_image_width=1200,
+        desired_image_height=853,
+        desired_image_width=1280,
         start=0,
         end=-1,
         stride=1,
@@ -63,8 +59,8 @@ config = dict(
         use_sil_for_loss=False,
         sil_thres=0.99,
         use_l1=True,
-        ignore_outlier_depth_loss=False,
-        loss_weights=dict(
+        ignore_outlier_depth_loss=False, #MODIFIED
+        loss_weights=dict(       ### MODIFIED
             im=0.5,
             depth=1.0,
         ),
@@ -77,7 +73,7 @@ config = dict(
             cam_unnorm_rots=0.0004,
             cam_trans=0.002,
         ),
-        visualize_tracking_loss=True, # Visualize Tracking Loss
+        visualize_tracking_loss=False, # Visualize Tracking Loss
     ),
     mapping=dict(
         num_iters=mapping_iters,
@@ -129,7 +125,7 @@ config = dict(
         show_sil=False, # Show Silhouette instead of RGB
         visualize_cams=True, # Visualize Camera Frustums and Trajectory
         viz_w=600, viz_h=340,
-        viz_near=0.01, viz_far=100.0,
+        viz_near=0.01, viz_far=5.0,
         view_scale=2,
         viz_fps=5, # FPS for Online Recon Viz
         enter_interactive_post_online=True, # Enter Interactive Mode after Online Recon Viz
